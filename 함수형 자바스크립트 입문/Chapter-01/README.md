@@ -148,3 +148,50 @@ const messaging = (message: string, prefix: string) => `${prefix}${message}`;
 순수 함수 기반 코드는 읽고, 이해하고 테스트하기 쉽다.
 
 순수 함수든 어떤 함수든 항상 의미 있는 이름이어야 한다.
+
+#### 병렬 코드
+
+순수 함수는 병렬로 코드를 실행할 수 있게 한다.
+
+#### 캐시
+
+순수 함수는 항상 주어진 입력에 대해 동일한 출력을 반환하므로, 함수 출력을 캐시할 수 있다.
+
+```ts
+function createFactorialFunction() {
+  const cache: { [key: number]: number } = {};
+
+  function factorial(n: number): number {
+    if (n === 0 || n === 1) return 1;
+
+    // 캐시에 있으면 캐시의 값을 반환한다.
+    if (cache[n]) return cache[n];
+
+    // 캐시에 없으면 함수를 호출하고 캐시를 갱신한다.
+    cache[n] = n * factorial(n - 1);
+    return cache[n];
+  }
+
+  // 클로저를 반환.
+  return factorial;
+}
+
+const memoizedFactorial = createFactorialFunction();
+
+console.log(memoizedFactorial(5)); // 120
+console.log(memoizedFactorial(6)); // 720
+```
+
+#### 파이프라인과 컴포저블
+
+- 순수함수는 오직 한 가지 일만 처리한다.
+- 한 가지 일만 완벽하게 처리하는 것이 유닉스 철학이고, 순수 함수를 구현할 때 이 철학을 동일하게 따라야 한다.
+
+유닉스 / 리눅스에서는 간단한 명령어들을 파이프라인이나 compose를 이용해서 복잡한 작업을 처리한다.
+
+```bash
+cat jsBook | grep -i "composing" | wc
+```
+
+이런 방식이 유닉스 / 리눅스 cli에만 국한되는 것이 아니라 **함수형 패러다임의 핵심**이다.
+이를 <code style="color : Red">함수 합성 (Functional composition)</code> 이라고 한다.
