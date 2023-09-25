@@ -265,7 +265,7 @@ const people = [
 ];
 
 people.sort((a, b) =>
-  a.firstname < b.fistname ? -1 : a.firstname > b.firstname ? 1 : 0
+  a.firstname < b.firstname ? -1 : a.firstname > b.firstname ? 1 : 0
 );
 ```
 
