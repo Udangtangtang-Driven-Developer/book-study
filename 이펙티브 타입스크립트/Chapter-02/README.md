@@ -394,7 +394,7 @@ x.language; // undefined
 2. 그 외의 속성은 없는지
 
 ```ts
-// 타입 체커 통과 못하는 예시
+// 타입 체커를 통과하지 못하는 예시
 interface Room {
   numDoors: number;
   ceilingHeightFt: number;
@@ -406,7 +406,7 @@ const r: Room = {
   animal: "dog", // 없는 속성이라 타입 에러 발생
 };
 
-// 타입 체커 통과 하지 못하는 예시
+// 타입 체커를 통과하는 예시
 const obj = {
   numDoors: 1,
   ceilingHeightFt: 1,
