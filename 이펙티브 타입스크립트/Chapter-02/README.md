@@ -1087,7 +1087,7 @@ type Row3 =
 
 ### 인덱스 시그니처를 좀 더 narrow 하게 사용하는 방법 2가지
 
-1. Recode 사용하기
+1. `Record` 사용하기
 
 ```ts
 type Vec3D = Record<"x" | "y" | "z", number>;
