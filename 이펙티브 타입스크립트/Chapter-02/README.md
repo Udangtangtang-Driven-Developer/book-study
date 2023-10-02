@@ -678,7 +678,7 @@ type NameVariable = (Input | Output) & { name: string };
 // 타입으로 튜플과 배열 타입 표현하는 방법
 type Pair = [number, number];
 type StringList = string[];
-type NmaedNums = [string, ...number[]];
+type NamedNums = [string, ...number[]];
 
 // 인터페이스로 튜플 표현하는 방법
 interface Tuple {
