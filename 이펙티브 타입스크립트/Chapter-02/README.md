@@ -1107,3 +1107,347 @@ type Vec3DWithDifferentValueType = {
 
 - 런타임 때까지 객체의 속성을 알 수 없는 경우에만 `인덱스 시그니처` 사용하고 가능하다면 인덱스 시그니처보다 정확한 타입 사용하기
 - 안전한 접근을 위해 인덱스 시그니처의 값 타입에 `undefined` 추가하는 것 고려해보기
+
+## 아이템 16. number 인덱스 시그니처보다는 Array, 튜플, ArrayLike 사용하기
+
+### 자바스크립트에서의 객체
+
+- 키 + 값 쌍의 모음
+- 객체를 키로 사용하려고 하면 `toString` 메서드가 호출되어 객체가 문자열로 변환된다.
+
+```ts
+const x = {};
+x[[1, 2, 3]] = 2;
+
+console.log(x); // {1,2,3: 2}
+```
+
+- 자바스크립트 런타임은 숫자 속성 이름을 문자열로 변환한다.
+- 배열 객체의 인덱스를 문자열 사용해도 접근할 수 있다
+
+```ts
+const x = [1, 2, 3];
+
+console.log(x["1"]); // 2
+```
+
+### 타입 스크립트에서의 객체
+
+- 타입스크립트에서는 숫자 키가 문자열 키로 변환되는 혼동을 바로잡기 위해서, **숫자 키를 허용하고, 문자열 키와 다른 것으로 인식한다.**
+
+```ts
+interface Array<T> {
+  [n: number]: T;
+}
+
+Array<string>;
+```
+
+- 타입 스크립트 타입 정보는 런타임에 제거된다. 한편 `Object.keys`같은 구문은 여전히 문자열로 반환한다.
+
+#### `string` 타입 `key`가 배열의 인덱스로 사용된 예시 코드
+
+```ts
+const x = [1, 2, 3];
+const keys = Object.keys(x); // 타입이 string[]
+
+for (const key in x) {
+  key; // 타입이 string
+  const a = x[key]; // 타입이 number
+}
+```
+
+#### 반복문 사용에 대한 가이드
+
+- 인덱스에 신경쓰지 않는다면, `for-of` 사용하는 게 더 좋다. 각 루프마다 `key`가 나타내는 게 다르다.
+  - `for...in` : 배열 순회하는 루프로, _배열의 속성 키를 나타내는 키는 `string` 타입을 가진다._
+  - `for...of` : 배열을 순회하는 루프로, 키는 배열의 값과 같은 타입을 가진다.
+  - 타입이 불확실하다면, `for...in` 루프는 `for...of` 또는 `for루프`에 비해 몇 배나 느리다.
+
+```ts
+const x = [1, 2, 3];
+
+// for...in
+for (const key in x) {
+  key; // 타입이 string
+  const a = x[key]; // 타입이 number
+}
+
+// for...of
+for (const key of x) {
+  key; // 타입이 number
+  const a = x[key]; // 타입이 number
+}
+```
+
+- 인덱스의 타입이 중요하다면, 인덱스에 `nubmer타입` 제공해주는 `Array.prototype.forEach` 사용하기
+
+```ts
+x.forEach((x, i) => {
+  i; // 타입이 nubmer
+  x; // 타입이 number
+});
+```
+
+- 루프 중간에 멈춰야 한다면 C 스타일인 `for문` 사용하기
+
+```ts
+for (let i = 0; i < x.length; i++) {
+  const value = x[i];
+  if (value < 0) break;
+}
+```
+
+- 어떤 길이를 가지는 배열과 비슷한 형태의 튜플을 사용하고 싶다면 타입스크립트에 있는 `ArrayLike` 타입 사용하기
+  - `ArrayLike` : 숫자 인덱스키와 `length` 프로퍼티를 가지는 객체와 유사한 구조
+- **`ArrayLike`는 커스텀 타입으로, 배열과 유사하지만 자바스크립트 배열의 모든 메서드를 가지지 않는다.**
+
+```ts
+const checkedAccess = <T>(xs: ArrayLike<T>, i: number): T => {
+  if (i < xs.length) {
+    return xs[i];
+  }
+  throw new Error(`배열의 끝을 지나서 ${i}를 접근하려고 했습니다.`);
+};
+
+const tupleLike: ArrayLike<string> = {
+  "0": "A",
+  "1": "B",
+  length: 2,
+};
+```
+
+### 요약
+
+- **배열은 객체이므로 키는 숫자가 아니라 문자열이다.**
+- 인덱스 시그니처에 `number`를 사용하기보다 `Array`나 `튜플`, 또는 `ArrayLike` 타입을 사용하는 것이 좋다.
+
+## 아이템 17. 변경 관련된 오류 방지를 위해 readonly 사용하기
+
+### readonly 사용된 코드 예시
+
+```ts
+const arraySum = (arr: readonly number[]) => {
+  let sum = 0,
+    num;
+
+  while ((num = arr.pop()) !== undefined) {
+    sum += num;
+  }
+  return sum;
+};
+```
+
+#### `readonly number[]`의 특징
+
+- 배열 요소 읽을 수 있지만, 쓸 수 없다.
+- `length`를 읽을 수 있지만, 바꿀 수는 없다.
+- 배열을 변경하는 `pop`을 비롯한 다른 메서드를 호출할 수 없다.
+
+```ts
+const a: number[] = [1, 2, 3];
+const b: readonly number[] = a;
+const c: number[] = b; // readonly number[]타입은 변경 가능한 number[] 타입에 할당할 수 없다.
+```
+
+- `number[]`은 `readonly number[]`보다 기능이 많아서 `readonly number[]`의 서브타입이 된다. 따라서 변경 가능한 배열을 readonly 배열에 할당할 수 있다.
+
+#### 매개 변수를 readonly로 선언하면 좋은 점
+
+1. TS는 매개변수가 함수 내에서 변경이 일어나는지 체크한다.
+2. 호출하는 쪽에서는 함수가 매개변수를 변경하지 않는다는 보장을 받는다.
+3. 호출하는 쪽에서 함수에 `readonly` 배열을 매개변수로 넣을 수 있다.
+4. 더 넓은 타입을 호출할 수 있고, 의도치 않은 변경 방지될 것이다.
+
+- **타입스크립트애서와 마찬가지로 자바스크립트에서도 명시적으로 언급하지 않는 다면 함수가 매개변수를 변경하지 않는다고 가정하지만, 그래도 `readonly` 명시해주는 것이 좋다.**
+
+```ts
+// 배열 변경하지 않는 방법
+const betterArraySum = (arr: readonly number[]) => {
+  let sum = 0;
+
+  for (const num of arr) {
+    sum += num;
+  }
+  return sum;
+};
+```
+
+#### `readonly` 활용 방법
+
+- 함수가 매개변수를 변경하지 않는다면 `readonly`로 선언하기
+- 라이브러리에 있는 함수를 호출하는 경우라면, 타입 선언을 바꿀 수 없으니까 타입 단언문 `as number[]` 사용하기
+- `readonly`를 사용하면 지역 변수와 관련된 모든 종류의 변경 오류를 방지할 수 있다.
+
+```ts
+// 변경 전
+const parseTaggedText = (lines: string[]): string[][] => {
+  const paragraphs: string[][] = [];
+  const currPara: string[] = [];
+
+  const addParagraph = () => {
+    if (currPara.length) {
+      // currPara의 내용이 삽입되지 않고 배열의 참조가 삽입됨
+      // currPara 변경시 동일한 객체 참조하는 paragraphs 요소에도 반영됨
+      paragraphs.push(currPara);
+      // 새 단락을 paragraphs에 추가하고 배열을 바로 비움
+      currPara.length = 0;
+    }
+  };
+
+  for (const line of lines) {
+    if (!line) {
+      addParagraph();
+    } else {
+      currPara.push(line);
+    }
+  }
+
+  addParagraph();
+  return paragraphs;
+};
+
+// 변경 후 - readonly 추가,  const 대신 let으로 변경, 변환이 없는 메서드 사용
+const parseTaggedText1 = (lines: string[]): string[][] => {
+  const paragraphs: string[][] = [];
+  let currPara: readonly string[] = [];
+
+  const addParagraph = () => {
+    if (currPara.length) {
+      // currPara 복사본 만들어서 사용하기
+      paragraphs.push([...currPara]);
+      // readonly 속성을 제거하기 위해서 단언문 사용하는 방법
+      // paragraphs.push(currPara as string[]);
+      currPara = []; // 배열을 비움
+    }
+  };
+
+  for (const line of lines) {
+    if (!line) {
+      addParagraph();
+    } else {
+      // 원본 수정하지 않고 새 배열 반환하도록 변경
+      currPara = currPara.concat(line);
+    }
+  }
+
+  addParagraph();
+  return paragraphs;
+};
+```
+
+#### readonly는 얇게(shallow) 동작한다.
+
+- 객체에 사용되는 `Readonly` 제네릭도 마찬가지다.
+- 깊이가 깊은 `readonly` 타입을 사용하고 싶다면, 라이브러리 사용하라.
+
+```ts
+const dates: readonly Date[] = [new Date()];
+
+dates.push(new Date()); // readonly Date[] 타입이라서 push 존재하지 않음
+
+dates[0].setFullYear(2036); // 동작
+
+// Readonly 예시
+interface Outer {
+  inner: {
+    x: number;
+  };
+}
+
+const o: Readonly<Outer> = { inner: { x: 0 } };
+
+o.inner = { x: 1 }; // readonly 타입이라서 할당 불가
+o.inner.x = 5; // 동작
+
+type T = Readonly<Outer>;
+//  {
+//   readonly inner: {
+//       x: number;
+//   };
+// }
+```
+
+### 요약
+
+- 함수가 매개변수를 수정하지 않는다면 `readonly` 선언하는 게 좋다. 인터페이스가 명확해지고, 의도치않게 매개변수가 변경되는 걸 방지한다.
+- `readonly` 사용하면 변경이 발생하는 코드를 찾기 쉽다.
+- `const와` `readonly의` 차이 이해하기
+- `readonly는` 얕게 동작한다.
+
+## 아이템 18. 매핑된 타입을 사용하여 값을 동기화하기
+
+- 매핑된 타입은 한 객체가 다른 객체와 정확히 같은 속성을 가지게 할 때 이상적이다.
+
+### 코드 예시
+
+```ts
+interface ScatterProps {
+  // The data
+  xs: number[];
+  ys: number[];
+
+  // Display
+  xRange: [number, number];
+  yRange: [number, number];
+  color: string;
+
+  // Events
+  onClick: (x: number, y: number, index: number) => void;
+  // onDoubleClick: (x: number, y: number) => void;
+}
+
+// 새로운 속성이 추가되면 shouldUpdate함수는 값이 변경될 때마다 차트 다시 그림
+// 보수적 접근법, 실패에 닫힌 접근법 (오류 발생시 적극적으로 대처하는 방법)
+// 정확하지만 너무 자주 그려질 가능성이 있다.
+const shouldUpdate1 = (oldProps: ScatterProps, newProps: ScatterProps) => {
+  let k: keyof ScatterProps;
+  for (k in oldProps) {
+    if (oldProps[k] !== newProps[k]) {
+      if (k !== "onClick") return true;
+    }
+
+    return false;
+  }
+};
+
+// 실패에 열린 접근법 (오류 발생시 소극적으로 대처하는 방법)
+// 차트를 불필요하게 다시 그리는 단점 해결
+// 다시 그려야하는 경우도 누락될 수 있음
+
+const shouldUpdate2 = (oldProps: ScatterProps, newProps: ScatterProps) => {
+  return (
+    oldProps.xs !== newProps.xs ||
+    oldProps.ys !== newProps.ys ||
+    oldProps.xRange !== newProps.xRange ||
+    oldProps.yRange !== newProps.yRange ||
+    oldProps.color !== newProps.color
+  );
+};
+
+// 새로운 속성이 추가될 때 shouldUpdate를 고치는데 타입 체커가 대신할 수 있도록 하기
+const REQUIRES_UPDATE: { [k in keyof ScatterProps]: boolean } = {
+  xs: true,
+  ys: true,
+  xRange: true,
+  yRange: true,
+  color: true,
+  onClick: false,
+};
+
+const shouldUpdate3 = (oldProps: ScatterProps, newProps: ScatterProps) => {
+  let k: keyof ScatterProps;
+  for (k in oldProps) {
+    if (oldProps[k] !== newProps[k] && REQUIRES_UPDATE) {
+      return true;
+    }
+
+    return false;
+  }
+};
+```
+
+### 요약
+
+- 매핑된 타입을 사용해서 관련된 값과 타입을 동기화하자.
+- 인터페이스에 새로운 속성을 추가할 때, 선택을 강제하도록 매팅된 타입을 고려해보자.
