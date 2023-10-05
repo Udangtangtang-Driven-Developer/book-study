@@ -80,16 +80,13 @@ const dummySubscriptionComponents: SubscriptionComponent[] = [
 
 ```ts
 const subscriptionPlans = zip(
-  await dummySubscriptionApi.getSubscriptionPlans(),
+  await dummySubscriptionApi.getSubscriptionPlans(), // 더미 api 호출
   dummySubscriptionComponents,
-  (plan, component) => {
-    if (plan.name === component.name) {
-      return {
-        ...plan,
-        element: component.element,
-      };
+  (plan, component) =>
+    plan.name === component.name && {
+      ...plan,
+      component: component.element,
     }
-  }
 );
 ```
 
