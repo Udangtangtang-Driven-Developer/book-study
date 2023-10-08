@@ -1438,7 +1438,7 @@ const REQUIRES_UPDATE: { [k in keyof ScatterProps]: boolean } = {
 const shouldUpdate3 = (oldProps: ScatterProps, newProps: ScatterProps) => {
   let k: keyof ScatterProps;
   for (k in oldProps) {
-    if (oldProps[k] !== newProps[k] && REQUIRES_UPDATE) {
+    if (oldProps[k] !== newProps[k] && REQUIRES_UPDATE[k]) {
       return true;
     }
 
