@@ -107,7 +107,7 @@ const filter = <T>(
   arr: T[],
   predicate: (value: T, index: number, array: T[]) => boolean
 ): T[] => {
-  const result = [];
+  const result: T[] = [];
 
   for (let i = 0; i < arr.length; i++)
     predicate(arr[i], i, arr) && result.push(arr[i]);
@@ -122,7 +122,7 @@ const result = filter(source, (value) => value % 2 === 0);
 console.log(result); // [2, 4]
 ```
 
-위의 `apressBooks` 배열에서 rating이 4.5 이상인 책만 추출해야한다고 하면
+위의 `apressBooks` 배열에서 rating이 4.5 초과인 책만 추출해야한다고 하면
 
 ```ts
 const apressBookTitleFilter = filter(
@@ -245,7 +245,7 @@ const apressBooks: Array<Book> = [
 const details = map(apressBooks, (book) => book.bookDetails);
 ```
 
-`detail`은 bookDetails가 이미 배열이기 때문에 중첩 배열이 된다. 이 `detail`을 filter에 전달해도 중첩배열이기 때문에 동작하지 않는다.
+`details`은 bookDetails가 이미 배열이기 때문에 중첩 배열이 된다. 이 `details`을 filter에 전달해도 중첩배열이기 때문에 동작하지 않는다.
 
 이 때 concatAll을 사용할 수 있다.
 
