@@ -184,7 +184,7 @@ declare const viewportForBounds = (bounds : LngLatBounds) : Camera;
 
 ### 요약
 
-- 보통 배개변수 타입은 반환 타입에 비해 범위가 넓은 편이다. 선택적 속성과 유니온 타입은 반환 타입보다 매개변수 타입에 더 일반적이다.
+- 보통 매개변수 타입은 반환 타입에 비해 범위가 넓은 편이다. 선택적 속성과 유니온 타입은 반환 타입보다 매개변수 타입에 더 일반적이다.
 - **매개변수와 반환 타입을 재사용하기 위해서 기본 형태(반환 타입)와 느슨한 형태(매새변수 타입)을 도입하는 것이 좋다. (!!!!!!!!)**
 
 ## 아이템 30. 문서에 타입 정보를 쓰지 않기
@@ -213,7 +213,7 @@ const getForegroundColor = (page?: string): Color => {};
 
 ```ts
 // bad case
-/** numbs를 변경하기 않습니다 */
+/** nums를 변경하기 않습니다 */
 const sort1 = (nums: number[]) => {
   nums[0] = 1; // 타입 체커 통과
 };
@@ -368,7 +368,7 @@ class UserPosts {
   user: UserInfo | null;
   posts: Post[] | null;
 
-  constructor() {
+  constructor(user: UserInfo, posts: Post[]) {
     this.user = null;
     this.posts = null;
   }
