@@ -437,6 +437,48 @@ const drawLayer = (layer: Layer) => {
     const { layout } = layer; // 타입이 PointLayout
   }
 };
+
+// great case using generic
+
+type ILayout = Record<string, any>;
+
+interface FillLayout extends ILayout {}
+
+interface LineLayout extends ILayout {}
+
+interface PointLayout extends ILayout {}
+
+type IPaint = Record<string, any>;
+
+interface FillPaint extends IPaint {}
+
+interface LinePaint extends IPaint {}
+
+interface PointPaint extends IPaint {}
+
+interface ILayer<Type, Layout extends ILayout, Paint extends IPaint> {
+  type: Type;
+  layout: Layout;
+  paint: Paint;
+}
+
+type Layer =
+  | ILayer<"fill", FillLayout, FillPaint>
+  | ILayer<"line", LineLayout, LinePaint>
+  | ILayer<"point", PointLayout, PointPaint>;
+
+const drawLayer = (layer: Layer) => {
+  if (layer.type === "fill") {
+    const { paint } = layer; // 타입이 FillPaint
+    const { layout } = layer; // 타입이 FillLayout
+  } else if (layer.type === "line") {
+    const { paint } = layer; // 타입이 LinePaint
+    const { layout } = layer; // 타입이 LineLayout
+  } else {
+    const { paint } = layer; // 타입이 PointPaint
+    const { layout } = layer; // 타입이 PointLayout
+  }
+};
 ```
 
 ### 태그된 유니온 패턴 예시 2
