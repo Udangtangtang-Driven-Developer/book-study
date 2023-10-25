@@ -202,7 +202,7 @@ console.log(await getTopPosts("new"));
 console.log(await getTopPosts("wrong-subreddit")); // null
 ```
 
-`getTopPosts` 는 논리 흐름에서 null | undefined 에러의 원인이 될 수 있는 원치 않는 입력을 다룰 수 있다는 점이다.
+`getTopPosts` 는 논리 흐름에서 null | undefined 에러의 원인이 될 수 있는 원치 않는 입력을 다룰 수 있다
 
 `map` 체이닝에서 값이 비어있는 경우 항상 `MayBe.of(null)` 을 반환하기 때문에 에러를 던지지 않는다.
 
@@ -211,6 +211,8 @@ console.log(await getTopPosts("wrong-subreddit")); // null
 ## Either
 
 `MayBe` 는 어떤 분기에서 값이 Nothing 이 되는지 알수 없다. 즉 map의 체이닝에서 어떤 map에서 값이 사라지는지 찾을 수 없다. 이를 해결하기 위해 Either가 필요하다.
+
+Either는 에러 케이스를 Left로 정의하고 성공 케이스를 Right로 정의해서 Left나 Right 둘 중 한가지 값을 반환하도록 사용한다.
 
 ※ 여기서부터 책의 구현과 많이 다르다. 이유는 이후 설명
 
@@ -273,6 +275,7 @@ export class Right<T> {
   }
 }
 
+// Left와 Right의 union 타입
 export type Either<T, U> = Left<T> | Right<U>;
 ```
 
@@ -289,9 +292,10 @@ export class RedditAPI {
   ): Promise<Either<RedditError, RedditPost>> {
     return this.axios
       .get<RedditPost>(`${this.#BASE_URL}/${type}.json?limit=10`)
-      .then((res) => Right.of<RedditPost>(res.data))
+      .then((res) => Right.of<RedditPost>(res.data)) // resolve 케이스는 Right로 반환
       .catch((err) =>
         Left.of<RedditError>({
+          // reject 케이스는 Left로 반환
           message: "Something went wrong",
           code: err.response?.status,
         })
@@ -406,9 +410,10 @@ export class RedditAPI {
   public async getPostsAnyEither(type: string): Promise<AnyEither> {
     return this.axios
       .get(`${this.#BASE_URL}/${type}.json?limit=10`)
-      .then((res) => Some.of(res.data))
+      .then((res) => Some.of(res.data)) // resolve 케이스는 Some으로 반환
       .catch((err) =>
         Nothing.of({
+          // reject 케이스는 Nothing으로 반환
           message: "Something went wrong",
           code: err.response?.status,
         })
@@ -448,7 +453,9 @@ console.log(await getTopPostsEither("wrong-subreddit"));
 
 > Pointed Functor 는 특정 값을 Functor 내에 넣는 연산을 수행할 수 있도록 해주는 함수(예시에서 `of`) 를 제공합니다, `of`를 호출하더라도 functor의 구조는 유지됩니다. 즉, `map` 함수를 사용하여 functor 내부의 값을 변환할 수 있습니다. 위에서 구현된 MayBe와 Either도 pointed Functor의 한 예시입니다.
 
-참고 : 오픈소스 fp-ts 라이브러리의 [either](https://grossbart.github.io/fp-ts/modules/Either.ts.html#:~:text=A%20common%20use%20of%20Eitheris%20as%20an%20alternative,a%20received%20input%20is%20a%20stringor%20a%20number.)
+## 참고
+
+오픈소스 fp-ts 라이브러리의 [either](https://grossbart.github.io/fp-ts/modules/Either.ts.html#:~:text=A%20common%20use%20of%20Eitheris%20as%20an%20alternative,a%20received%20input%20is%20a%20stringor%20a%20number.)
 
 - fp-ts의 either는 functor로 구현되지 않았음. (`index.ts` 참고)
 
