@@ -1,9 +1,4 @@
-export interface ErrorResponse {
-  message: string;
-  code?: number;
-}
-
-export interface RedditResponse<D> {
+export interface Reddit<D> {
   kind: string;
   data: RedditData<D>;
 }
@@ -152,7 +147,7 @@ export interface T1Comment {
   subreddit: string;
   author_flair_template_id: any | null;
   likes: any | null;
-  replies: RedditResponse | string;
+  replies: Reddit<any> | string;
   user_reports: string[];
   saved: boolean;
   id: string;

@@ -1,36 +1,30 @@
 import { AxiosInstance } from "axios";
-import { ErrorResponse, RedditResponse, T1Data, T3Data, T3Post } from "./types";
+import { Reddit, T1Data, T3Data } from "../models";
+import { Maybe } from "../../libs";
+
+type RedditPost = Reddit<T3Data>;
+type RedditComment = Array<Reddit<T1Data | T3Data>>;
 
 export class RedditApi {
   #baseUrl = "https://www.reddit.com";
 
   public constructor(private readonly client: AxiosInstance) {}
 
-  public async getPosts(
-    query: string
-  ): Promise<RedditResponse<T3Data> | ErrorResponse> {
-    const url = `${this.#baseUrl}/search.json?q=${query}&limit=1`;
+  public async getPosts(query: string): Promise<Maybe<RedditPost>> {
+    const url = `${this.#baseUrl}/search.json?q=${query}&limit=5`;
 
     return this.client
-      .get<RedditResponse<T3Data>>(url)
-      .then((res) => res.data)
-      .catch((err) => ({
-        message: "Something went wrong",
-        code: err.response?.status,
-      }));
+      .get<RedditPost>(url)
+      .then((res) => Maybe.of(res.data))
+      .catch(() => Maybe.nothing());
   }
 
-  public async getComments(
-    permalink: string
-  ): Promise<Array<RedditResponse<T1Data | T3Data>> | ErrorResponse> {
+  public async getComments(permalink: string): Promise<Maybe<RedditComment>> {
     const url = `${this.#baseUrl}${permalink}.json`;
 
     return this.client
-      .get<Array<RedditResponse<T1Data | T3Data>>>(url)
-      .then((res) => res.data)
-      .catch((err) => ({
-        message: "Something went wrong",
-        code: err.response?.status,
-      }));
+      .get<RedditComment>(url)
+      .then((res) => Maybe.of(res.data))
+      .catch(() => Maybe.nothing());
   }
 }

@@ -1,7 +1,7 @@
 export class Maybe<T> {
-  #value: T | null;
+  #value: T | null | undefined;
 
-  private constructor(value: T | null) {
+  private constructor(value: T | null | undefined) {
     this.#value = value;
   }
 
@@ -15,7 +15,7 @@ export class Maybe<T> {
     return new Maybe<T>(null);
   }
 
-  public static of<T>(value: T) {
+  public static of<T>(value: T | null | undefined) {
     return value ? Maybe.just(value) : Maybe.nothing<T>();
   }
 
@@ -30,9 +30,31 @@ export class Maybe<T> {
     return this.isNothing() ? defaultValue : (this.#value as T);
   }
 
+  public value(): T | null | undefined {
+    return this.#value;
+  }
+
   public map<U>(fn: (wrapped: T) => U): Maybe<U> {
     return this.isNothing()
       ? Maybe.nothing<U>()
       : Maybe.of(fn(this.#value as T));
+  }
+
+  public flatMap<U>(fn: (wrapped: T) => Maybe<U>): Maybe<U> {
+    return this.isNothing() ? Maybe.nothing<U>() : fn(this.#value as T);
+  }
+
+  public mapAsync<U>(fn: (wrapped: T) => Promise<U>): Promise<Maybe<U>> {
+    return this.isNothing()
+      ? Promise.resolve(Maybe.nothing<U>())
+      : fn(this.#value as T).then((v) => Maybe.of(v));
+  }
+
+  public flatMapAsync<U>(
+    fn: (wrapped: T) => Promise<Maybe<U>>
+  ): Promise<Maybe<U>> {
+    return this.isNothing()
+      ? Promise.resolve(Maybe.nothing<U>())
+      : fn(this.#value as T);
   }
 }
