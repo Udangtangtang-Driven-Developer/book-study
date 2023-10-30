@@ -43,16 +43,25 @@ export class MockUserApi {
     },
   ];
 
+  /**
+   * @description 모든 유저 목록을 반환한다.
+   */
   public findAll(): Maybe<User[]> {
     return Maybe.of(this.#MOCK_USERS);
   }
 
+  /**
+   * @description 유저 이름으로 유저를 찾는다.
+   */
   public findByName(name: string): Maybe<User> {
     const user = this.#MOCK_USERS.find((user) => user.name === name);
 
     return Maybe.of(user);
   }
 
+  /**
+   * @description 유저 아이디로 프로필을 찾는다.
+   */
   public findProfileByUserId(userId: number): Maybe<Profile> {
     const profile = this.#MOCK_PROFILES.find(
       (profile) => profile.userId === userId

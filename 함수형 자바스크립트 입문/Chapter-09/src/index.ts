@@ -7,11 +7,11 @@ async function bootstrap(): Promise<void> {
    * Maybe map example
    */
   const profileImage = API.user
-    .findAll()
-    .map((users) => API.user.findByName(users[0].name))
-    .map((user) => user.map((u) => u.id))
-    .map((id) => API.user.findProfileByUserId(id.getOrElse(0)))
-    .map((p) => p.map((p) => p.profileImage));
+    .findAll() // Maybe<User[]>
+    .map((users) => API.user.findByName(users[0].name)) // Maybe<Maybe<User>>
+    .map((user) => user.map((u) => u.id)) // Maybe<Maybe<number>>
+    .map((id) => API.user.findProfileByUserId(id.getOrElse(0))) // Maybe<Maybe<Profile>>
+    .map((p) => p.map((p) => p.profileImage)); // Maybe<Maybe<string>>
 
   console.log(profileImage.value()?.value());
 
@@ -19,11 +19,11 @@ async function bootstrap(): Promise<void> {
    * Maybe Monad flatMap example
    */
   const profileImageWithMonad = API.user
-    .findAll()
-    .flatMap((users) => API.user.findByName(users[0].name))
-    .map((user) => user.id)
-    .flatMap((id) => API.user.findProfileByUserId(id))
-    .map((p) => p.profileImage);
+    .findAll() // Maybe<User[]>
+    .flatMap((users) => API.user.findByName(users[0].name)) // Maybe<User>
+    .map((user) => user.id) // Maybe<number>
+    .flatMap((id) => API.user.findProfileByUserId(id)) // Maybe<Profile>
+    .map((p) => p.profileImage); // Maybe<string>
 
   console.log(profileImageWithMonad.getOrElse("none"));
 
@@ -42,48 +42,26 @@ async function bootstrap(): Promise<void> {
         permalink: c.data.permalink,
       }))
     )
-    .flatMapAsync((posts) =>
-      Promise.all(
-        posts.map((p) => ({
-          id: p.id,
-          title: p.title,
-          comments: API.reddit.getComments(p.permalink),
-        }))
-      ).then((v) => Maybe.of(v))
+    .mapAsync(async (posts) =>
+      posts.map(async (p) => ({
+        id: p.id,
+        title: p.title,
+        comments: await API.reddit.getComments(p.permalink),
+      }))
     )
-    .then((v) => v.value())
-    .then((v) =>
-      v?.flatMap(async (v) => ({ ...v, comments: await v.comments }))
-    );
+    .then((posts) =>
+      posts.map((post) => {
+        return post.map(async (p) => {
+          const data = await p;
 
-  if (res) {
-    const promise1 = await res;
-    if (promise1) {
-      const promise2 = await promise1;
-      promise2.forEach(async (r) => {
-        const post = await r;
-        const comments = post.comments
-          .value()
-          ?.map((c) => c.data)
-          .flatMap((c) => c.children)
-          .filter((c) => c.kind === "t1")
-          .map<T1Comment>((c) => c.data as T1Comment)
-          .map((c) => c.body)
-          .slice(0, 3);
-
-        console.log({
-          id: post.id,
-          title: post.title,
-          comments,
+          // 또다른 처리들
         });
-      });
-    }
-  }
+      })
+    );
 }
 
 bootstrap()
   .then(() => {})
   .catch((err) => {
     console.error(err);
-    process.exit(1);
   });
