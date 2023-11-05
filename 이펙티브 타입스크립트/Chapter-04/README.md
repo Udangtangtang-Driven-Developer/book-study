@@ -652,3 +652,402 @@ const releaseDates2 = pluck2(albums, "releaseDate"); // 타입이 Date[]
 - 모든 문자열 허용하는 `string`보다 구체적인 타입 사용하기
 - 변수의 범위를 보다 정확하게 표현할 때는 문자열 리터럴 타입의 유니언 사용하기
 - 객체의 속성 이름을 함수 매개변수로 받을 때는 `string`보다 `keyof T` 사용하기
+
+## 아이템 34. 부정확한 타입 보다는 미완성 타입을 사용하기
+
+### 잘못된 타입은 차라리 타입이 없는 것보다 못할 수 있다.
+
+```ts
+interface Point {
+  type: "Point";
+  coordinates: number[];
+}
+
+interface LineString {
+  type: "LineString";
+  coordinates: number[][];
+}
+
+interface Polygon {
+  type: "Polygon";
+  coordinates: number[][][];
+}
+
+type Geometry = Point | LineString | Polygon;
+```
+
+### 경도, 위도를 나타내는 `number[]`보다 더 구체적인 튜플 타입 예시
+
+```ts
+type GeoPosition = [number, number];
+interface Point {
+  type: "Point";
+  coordinates: GeoPosition;
+}
+```
+
+### 위 코드의 문제점
+
+- 타입을 세밀하게 만들고자 했지만 오히려 타입이 부정확해졌다. 실제 데이터에는 세번째 요소인 고도가 있을 수 있고, 만약 이 타입 그대로 사용하려면 `as any` 추가해서 타입 체커 완전히 무시해야 한다.
+
+### 표현식의 유효성을 체크하는 테스트 세트
+
+- 타입을 구체적으로 만들수록 정밀도가 손상되는 것을 방지하는데 도움이 된다.
+  **중요한 건 정밀도를 유지하면서 오류를 잡는 것이다.**
+
+```ts
+type FnName = "+" | "-" | "*" | "/" | ">" | "<" | "case" | "rgb";
+type CallExpression = [FnName, ...any[]];
+type Expression3 = number | string | CallExpression;
+
+const tests: Expression3[] = [
+  10,
+  "red",
+  true, // 에러 발생 (boolean 타입에 포함되어 있지 않음)
+  ["+", 10, 5],
+  ["case", [">", 20, 10], "green"],
+  ["rgb", 255, 128, 64],
+];
+```
+
+- 고정 길이 배열은 튜플 타입으로 가장 간단히 표현할 수 있다
+
+```ts
+type Expression4 = number | string | CallExpression;
+
+type CallExpression = MathCall | CaseCall | RGBCall;
+
+interface MathCall {
+  0: "+" | "-" | "*" | "/" | ">" | "<";
+  1: Expression4;
+  2: Expression4;
+  length: 3;
+}
+
+interface CaseCall {
+  0: "case";
+  1: Expression4;
+  2: Expression4;
+  3: Expression4;
+  length: 4 | 6 | 8 | 10 | 12 | 14;
+}
+
+interface RGBCall {
+  0: "rgb";
+  1: Expression4;
+  2: Expression4;
+  3: Expression4;
+  length: 4;
+}
+
+const tests: Expression4[] = [
+  10,
+  "red",
+  true, // 에러 발생
+  ["+", 10, 5],
+  ["case", [">", 20, 10], "green", "red", "blue"], // 에러 발생
+  ["rgb", 255, 128, 64],
+  ["**", 2, 3], // 에러 발생
+];
+```
+
+### 타입 정밀도
+
+- 잘못 사용된 코드에서 오류가 발생시 오류 메세지는 난해해진다.
+- 부정확함을 바로 잡는 방법을 쓰는 대신, 테스트 세트를 추가하여 놓친 부분이 없는지 확인해도 된다.
+- 일반적으로 복잡한 코드는 더 많은 테스트가 필요하고, 타입의 관점에서도 마찬가지다.
+
+### 타입을 정제(refine) 주의할 점
+
+- 타입이 구체적으로 정제된다고 해서 정확도가 무조건 올라가지는 않는다.
+
+### 요약
+
+- 타입 안정성에서 타입이 없는 것보다 잘못된 게 더 나쁘다.
+- 정확하게 타입을 모델링할 수 없다면, 부정확하게 모델링하지 말아야 한다.
+- `any`와 `unknown`를 구별해서 사용해야 한다.
+- 타입 정보를 구체적으로 만들수록 정확도와 개발 경험 측면에서 오류 메세지와 자동 완성 기능에 주의를 기울어야 한다.
+
+## 아이템 35. 데이터가 아닌, API와 명세를 보고 타입 만들기
+
+### 예시 데이터가 위험한 이유
+
+- 예시 데이터는 눈 앞에 있는 데이터들만 고려하게 되므로 예기치 않은 곳에서 오류가 발생할 수 있다.
+- 따라서 예시 데이터가 아니라 명세를 참고해 타입을 생성해야 한다.
+
+### 예시 데이터로 타입 만든 예시
+
+```ts
+// geometry에 coordinates 속성이 있다고 가정한 경우 에러 발생
+const helper = (coords: any[]) => {};
+
+const { geometry } = f;
+if (geometry) {
+  helper(geometry.coordinates); // GeometryCollection에 coordinates 타입 없어서 에러 발생
+}
+```
+
+### 코드 개선 방법 2가지
+
+#### 특정 타입 차단하는 방법 :`GeometryCollection` 명시적으로 차단
+
+```ts
+const { geometry } = f;
+if (geometry) {
+  if (geometry.type === "GeometryCollection") {
+    throw new Error("GeometryCollection are not supported.");
+  }
+  helper(geometry.coordinates);
+}
+```
+
+#### 모든 타입 지원하는 더 좋은 방법 !!
+
+- 명세를 기반으로 타입을 작성한다면 **사용 가능한 모든 값에 대해서 동작하는 코드를 작성할 수 있다.**
+
+```ts
+const geometryHelper = (g: Geometry) => {
+  if (geometry.type === "GeometryCollection") {
+    geometry.geometries.forEach(geometryHelper);
+  } else {
+    helper(geometry.coordinates);
+  }
+};
+const { geometry } = f;
+if (geometry) {
+  geometryHelper(geometry);
+}
+```
+
+### API의 명세로부터 타입 생성하기 (GraphQL 예시)
+
+```ts
+query {
+  repository(owner : "Microsoft", name : "Typscript") {
+    createAt
+    description
+  }
+}
+
+
+// 결과
+{
+  "data" : {
+  "respository" :{
+    "createdAt" : "2014",
+    "description" : "hi",
+    }
+  }
+}
+```
+
+### GraphQL
+
+#### 특징
+
+- `GraphQL API`는 자체적으로 타입이 정의된 API에서 잘 동작한다.
+- 가능한 모든 쿼리와 인터페이스를 명세하는 스키마로 이루어져있다.
+- 특정 쿼리에 대해 타입스크립트 타입을 생성할 수 있다.
+- `GraphQL` 쿼리를 타입스크립트 타입으로 변환해주는 도구 중 `Apollo`가 있다.
+
+#### 자동 생성된 타입 정보의 장점
+
+- **쿼리가 바뀌면 타입도 자동으로 바뀌며, 스키마가 바뀌면 타입도 자동으로 바뀐다.**
+- **단 하나의 원천 정보인 `GraphQL` 스키마로부터 생성되기 때문에** 타입과 실제 값이 항상 일치한다.(중요!!!)
+
+#### 명세가 없는 경우
+
+- `quicktype` 같은 도구 사용해서 데이터로부터 타입을 생성할 수 있지만, 실제 데이터와 일치하지 않은 수도 있다.
+
+### 요약
+
+- 코드 구석 구석까지 타입 안정성을 얻기 위해 API 또는 데이터 형식에 대한 타입 생성을 고려해야 한다.
+- 데이터에 드러나지 않는 예외적인 경우들이 문제가 될 수 있기 때문에 데이터보다는 명세로부터 코드를 생성하는 게 좋다.
+
+## 아이템 36. 해당 분야의 용어로 타입 이름 짓기
+
+### 데이터를 명확하게 표현하자 (의도 드러내기)
+
+- 엄선된 타입, 속성, 변수의 이름은 의도를 명확히하고 코드와 타입의 추상화 수준을 높여준다.
+- 해당 분야에 이미 용어가 존재하는 경우는 새로 만들지 말고 사용해야 한다.
+- 좋은 이름은 추상화 수준을 높이고 의도치 않은 충돌의 위험성을 줄여준다.
+
+```ts
+interface Animal {
+  name: string;
+  endangered: boolean;
+  habitat: string;
+}
+
+const leopard: Animal = {
+  name: "mallang",
+  endangered: false,
+  habitat: "tundra",
+};
+```
+
+### 코드 문제점
+
+1. `name` 용어가 일반적인 용어라 동물의 학명인지 일반적인 명칭인지 알 수 없다.
+2. `endangered` 값 `true`가 멸종된건지, 멸종 위기에 있다는 건지 알 수 없다.
+3. `habitat`의 타입이 `string`으로 범위가 넓다.
+4. 객체의 이름과 속성의 `name`이 다른 의도로 사용되었는지 불분명하다.
+
+### 의도가 명확한 용어로 변경
+
+```ts
+type ConservationStatus = "EX" | "EW";
+type KoppenClimate = "Af" | "Am" | "As";
+
+interface Animal {
+  commonName: string;
+  genus: string;
+  species: string;
+  status: ConservationStatus;
+  climates: KoppenClimate[];
+}
+
+const snowLeopard: Animal = {
+  commonName: "Snow Leopart",
+  genus: "Panthera",
+  species: "Uncia",
+  status: "EW",
+  climates: ["Af", "Am"],
+};
+```
+
+- `name` -> `commonName`, `genus`, `species` 로 변경
+- `endangered`는 표준 분류 체계인 ConservationStatus 타입의 status로 변경
+- `habitat` -> `climates`로 변경, 쾨펜 기후 분류 사용
+
+### 타입, 속성, 변수 네이밍 관련 규칙 3가지
+
+1. 동일한 의미 나타내는 경우 같은 용어 사용하기
+2. 모호하고 의미없는 이름 피하기 : `data`, `info`, `item`, `thing`, `object`, `entity`
+3. 이름을 지을떄는 포함된 내용이나 계산 방식이 아니라 **데이터 자체가 무엇인지 고려하기** : `INodeList` 대신 `Directory`가 개념적인 측면에서 디렉터리 떠올리게 한다.
+
+### 요약
+
+- 가독성을 높이고, 추상화 수준을 올리기 위해서 해당 분야의 용어를 사용해야 한다.
+- 같은 의미엔 동일한 이름 사용하고, 특별한 의미가 있을 때만 용어 구분하기
+
+## 아이템 37. 공식 명칭에는 상표를 붙이기
+
+- 구조적 타이핑 특성 때문에 가끔 코드가 이상한 결과를 낼 수 있다.
+
+### 구조적 타이핑 관점에서 문제 없는 코드
+
+```ts
+interface Vector2D {
+  x: number;
+  y: number;
+}
+
+const calculateNorm = (p: Vector2D) => {
+  return Math.sqrt(p.x * p.x + p.y * p.y);
+};
+
+calculateNorm({ x: 3, y: 4 }); // 정상, 결과는 5
+
+const vec3D = { x: 3, y: 4, z: 1 };
+calculateNorm(vec3D); // 정상, 결과는 동일하게 5
+```
+
+### 3차원 벡터 허용하지 않게 코드를 변경하려면..
+
+- `brand` 사용해서 `Vector2D` 타입만 받도록 변경하기
+- 공식 명칭을 사용하는 것은 타입이 아니라 값의 관점에서 `Vector2D`라고 말하는 것이다.
+
+```ts
+interface Vector2D {
+  _brand: "2d"; // _brand 추가
+  x: number;
+  y: number;
+}
+
+const vec2D = (x: number, y: number): Vector2D => {
+  return { x, y, _brand: "2d" };
+};
+
+const calculateNorm = (p: Vector2D) => {
+  return Math.sqrt(p.x * p.x + p.y * p.y);
+};
+
+calculateNorm(vec2D(3, 4)); // 정상, 결과는 5
+
+const vec3D = { x: 3, y: 4, z: 1 };
+calculateNorm(vec3D); // 브랜드 속성이 없어서 에러 발생
+```
+
+### 상표 기법
+
+- 상표 기법은 타입 시스템에서 동작하지만 런타임에 상표를 검사하는 것과 동일한 효과를 얻을 수 있다.
+- 타입 시스템이기 때문에 런타임 오버헤드를 없앨 수 있다.
+- 추가 속성을 붙일 수 없는 `string`이나 `nubmer` 같은 내장 타입을 상표화할 수 있다.
+
+### 절대 경로 상표 기법 예시
+
+- 단언문 사용하지 않고 `isAbsolutePath`타입을 얻는 유일한 방법은 `isAbsolutePath` 타입을 매개변수로 받거나 타입이 맞는지 체크하는 것이다.
+
+```ts
+// 타입스크립트 영역
+// string 타입 이면서 _brand 속성을 가지는 객체
+type AbsolutePath = string & { _brand: "abs" };
+
+const listAbsolutePath = (path: AbsolutePath) => {};
+const isAbsolutePath = (path: string): path is AbsolutePath => {
+  return path.startsWith("/");
+};
+
+const f = (path: string) => {
+  if (isAbsolutePath(path)) {
+    listAbsolutePath(path);
+  }
+
+  listAbsolutePath(path); // path 타입이 string이라서 AbsolutePath 타입의 매개변수에 할당 할 수 없어 에러 발생
+};
+```
+
+### 목록에서 한 요소를 찾기 위해 이진 검색을 하는 경우 예시
+
+```ts
+const binarySearch = <T>(xs: T[], x: T): boolean => {
+  let low = 0,
+    high = xs.length - 1;
+
+  while (high >= low) {
+    const mid = low + Math.floor((high - low) / 2);
+    const v = xs[mid];
+    if (v === x) return true;
+    [low, high] = x > v ? [mid + 1, high] : [low, mid - 1];
+  }
+  return false;
+};
+```
+
+### 코드 개선할 점
+
+- 이진 검색은 이미 정렬된 상태를 가정하는데 코드 상에서 정렬된 목록만 허용된다는 의도가 나타나지 않는다.
+
+```ts
+type SortedList<T> = T[] & { _brand: "sorted" };
+
+// 목록 전체를 루프 돌아서 효율성은 떨어지지만 안정성은 확보됨
+const isSorted = <T>(xs: T[]): xs is SortedList<T> => {
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i] < xs[i - 1]) return false;
+  }
+  return true;
+};
+
+const binarySearch = <T>(xs: SortedList<T>, x: T): boolean => {};
+```
+
+- `binarySearch` 호출하려면, 정렬되었다는 상표가 붙은 `SortedList` 타입의 값을 사용하거나 `isSorted`를 호출하여 정렬되었음을 증명해야 한다.
+
+- 객체의 메서드를 호출하는 경우 `null`이 아닌 객체를 받거나 조건문을 사용해서 해당 객체가 `null`이 아닌지 체크하는 코드와 동일한 형태이다.
+
+### 요약
+
+- 구조적 타이핑으로 값을 세밀하게 구분하지 못하는 경우, 값을 구분하기 위해서 공식명칭 사용해서 상표 붙이는 거 고려해보기
+- 상표 기법은 타입 시스템에서 동작하지만 런타임에 상표를 검사하는 것과 동일한 효과를 얻을 수 있다.
