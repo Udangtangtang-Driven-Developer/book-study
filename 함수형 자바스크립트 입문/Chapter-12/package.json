@@ -1,0 +1,21 @@
+{
+  "name": "test-mocha",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "ts-mocha test/**/*.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^4.3.9",
+    "@types/mocha": "^10.0.3",
+    "@types/sinon": "^17.0.0",
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0",
+    "sinon": "^17.0.1",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {}
+}
