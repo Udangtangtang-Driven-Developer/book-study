@@ -357,7 +357,7 @@ class Theater {
 
 `Theater 로직을 TicketSeller 로 이동`의 성과
 
-- Theater에서 TicketOfiice로의 의존성이 제거됨
+- Theater에서 TicketOffice로의 의존성이 제거됨
 
   - TicketSeller와 협력하는 TicketOffice의 내부 구현이 성공적으로 캡슐화됨
 
