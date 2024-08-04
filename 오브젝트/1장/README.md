@@ -423,11 +423,10 @@ class Audience {
   }
 
   public buy(ticket: Ticket) {
+    this._bag.setTicket(ticket);
     if (this._bag.hasInvitation()) {
-      this._bag.setTicket(ticket);
       return 0;
     } else {
-      this._bag.setTicket(ticket);
       this._bag.minusAmount(ticket.getFee());
       return ticket.getFee();
     }
