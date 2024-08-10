@@ -338,7 +338,7 @@ class HHmm {
     return new HHmm(hh, mm);
   }
 
-  compareTo(target: HHmm): boolean {
+  compareTo(target: HHmm) {
     if (this._hh < target.hh) {
       return -1;
     } else if (this._hh === target.hh) {
